@@ -1,0 +1,15 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build docker container with tag
+    requires:
+      vars:
+        - IMAGE
+        - TAG
+    vars:
+      BUILD_DIR: '{{.BUILD_DIR | default "."}}'
+    cmds:
+      - >-
+        nix develop --command
+        docker build {{.BUILD_OPTS}} -t {{.IMAGE}}:{{.TAG}} {{.BUILD_DIR}}

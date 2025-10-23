@@ -1,0 +1,35 @@
+version: '3'
+
+includes:
+  kube:
+    taskfile: ./kube.yml
+    internal: true
+
+tasks:
+  do:*:
+    desc: "task helmfile:do:<dev/stage/prod> -- <diff/apply>"
+    deps:
+      - kube:config:load:{{.ENVIRONMENT}}
+    vars:
+      ENVIRONMENT: '{{index .MATCH 0}}'
+      SENTRY_DSN: '$SENTRY_DSN'
+      WORKDIR:
+        sh: pwd
+    requires:
+      vars:
+        - VERSION
+        - name: ENVIRONMENT
+          enum: [dev, stage, prod]
+    env:
+      KUBECONFIG: '{{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml'
+    preconditions:
+      - sh: test -f $KUBECONFIG
+        msg: "file {{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml does not exist."
+    cmds:
+      - defer: { task: kube:config:clean }
+      - >-
+        helmfile
+        --state-values-set version={{.VERSION}}
+        {{ if .SENTRY_DSN }}--state-values-set sentryDsn="{{ .SENTRY_DSN }}"{{ end }}
+        --environment {{.ENVIRONMENT}}
+        {{.CLI_ARGS}}

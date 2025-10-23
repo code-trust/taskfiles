@@ -1,0 +1,8 @@
+version: '3'
+
+tasks:
+  install:
+    internal: true
+    run: once
+    cmds:
+      - rustup toolchain install stable

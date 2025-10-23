@@ -1,0 +1,87 @@
+version: '3'
+
+tasks:
+  config:load:*:
+    desc: "task kube:config:load:<dev/stage/prod>"
+    vars:
+      ENVIRONMENT: '{{index .MATCH 0}}'
+      WORKDIR:
+        sh: pwd
+    requires:
+      vars:
+        - AWS_REGION
+        - name: ENVIRONMENT
+          enum: [dev, stage, prod]
+    env:
+      KUBECONFIG: '{{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml'
+    cmds:
+      - >-
+        aws ssm get-parameter
+        --name /resourcing/{{.ENVIRONMENT}}/kubeconfig
+        --with-decryption
+        --query Parameter.Value
+        --output text
+        > $KUBECONFIG
+      - chmod go-r $KUBECONFIG
+
+  config:clean:
+    desc: "task kube:config:clean"
+    vars:
+      WORKDIR:
+        sh: pwd
+    cmds:
+      - rm -f {{.WORKDIR}}/k3s_kubeconfig_*.yaml
+
+  wait-for:*:
+    desc: "task kube:wait-for:<dev/stage/prod> -- <cmds>"
+    deps:
+      - config:load:{{.ENVIRONMENT}}
+    vars:
+      ENVIRONMENT: '{{index .MATCH 0}}'
+      WORKDIR:
+        sh: pwd
+    requires:
+      vars:
+        - name: ENVIRONMENT
+          enum: [dev, stage, prod]
+    env:
+      KUBECONFIG: '{{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml'
+    preconditions:
+      - sh: test -f $KUBECONFIG
+        msg: "file {{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml does not exist."
+    cmds:
+      - defer: { task: config:clean }
+      - >-
+        kubectl
+        rollout status
+        {{.CLI_ARGS}}
+
+  for-each-node:*:
+    desc: "task kube:for-each-node:<dev/stage/prod> -- <cmds>"
+    vars:
+      ENVIRONMENT: '{{index .MATCH 0}}'
+      WORKDIR:
+        sh: pwd
+    requires:
+      vars:
+        - name: ENVIRONMENT
+          enum: [dev, stage, prod]
+    env:
+      KUBECONFIG: '{{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml'
+    preconditions:
+      - sh: test -f $KUBECONFIG
+        msg: "file {{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml does not exist."
+    cmds:
+      - >-
+        kubectl
+        get nodes
+        -o json
+        | jq
+        -r '
+        .items
+        .[]
+        .metadata
+        .name
+        ' | while read -r node; do
+          kubectl node-shell $node -- {{.CLI_ARGS}}
+        done
