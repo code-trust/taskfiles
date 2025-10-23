@@ -1,0 +1,57 @@
+version: '3'
+
+includes:
+  aws:
+    taskfile: ./aws.yml
+    internal: true
+
+  docker:
+    taskfile: ./docker.yml
+    internal: true
+
+tasks:
+  build:
+    desc: Build docker container for AWS
+    requires:
+      vars:
+        - AWS_ACCOUNT_ID
+        - AWS_REGION
+        - IMAGE
+        - TAG
+    deps:
+      - task: aws:login
+    cmds:
+      - task: docker:build
+        vars:
+          BUILD_OPTS:
+            ref: .BUILD_OPTS
+          IMAGE: '{{.AWS_ACCOUNT_ID}}.dkr.ecr.{{.AWS_REGION}}.amazonaws.com/{{.IMAGE}}'
+          TAG:
+            ref: .TAG
+
+  deploy:
+    desc: Push docker container to AWS
+    requires:
+      vars:
+        - AWS_ACCOUNT_ID
+        - AWS_REGION
+        - IMAGE
+        - TAG
+    deps:
+      - task: aws:login
+      - task: build
+        vars:
+          AWS_ACCOUNT_ID:
+            ref: .AWS_ACCOUNT_ID
+          AWS_REGION:
+            ref: .AWS_REGION
+          BUILD_OPTS:
+            ref: .BUILD_OPTS
+          IMAGE:
+            ref: .IMAGE
+          TAG:
+            ref: .TAG
+    cmds:
+      - >-
+        nix develop --command
+        docker push {{.AWS_ACCOUNT_ID}}.dkr.ecr.{{.AWS_REGION}}.amazonaws.com/{{.IMAGE}}:{{.TAG}}
