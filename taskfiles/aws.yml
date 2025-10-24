@@ -1,13 +1,17 @@
 version: '3'
 
+vars:
+  RUN_DIR_RESOLVED: '{{default .TASKFILE_DIR .RUN_DIR}}'
+
 tasks:
   login:
+    run: once
     requires:
       vars:
         - AWS_ACCOUNT_ID
         - AWS_REGION
     cmds:
       - >-
-        nix develop --command
-        aws ecr get-login-password --region {{.AWS_REGION}}
-        | docker login --username AWS --password-stdin {{.AWS_ACCOUNT_ID}}.dkr.ecr.{{.AWS_REGION}}.amazonaws.com
+        cd {{.RUN_DIR_RESOLVED}} &&
+        nix develop --command aws ecr get-login-password --region {{.AWS_REGION}}
+        | nix develop --command docker login --username AWS --password-stdin {{.AWS_ACCOUNT_ID}}.dkr.ecr.{{.AWS_REGION}}.amazonaws.com

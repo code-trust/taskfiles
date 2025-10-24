@@ -1,8 +1,13 @@
 version: '3'
 
+vars:
+  RUN_DIR_RESOLVED: '{{default .TASKFILE_DIR .RUN_DIR}}'
+
 includes:
   kube:
     taskfile: ./kube.yml
+    vars:
+      RUN_DIR: '{{.RUN_DIR}}'
     internal: true
 
 tasks:
@@ -12,9 +17,8 @@ tasks:
       - kube:config:load:{{.ENVIRONMENT}}
     vars:
       ENVIRONMENT: '{{index .MATCH 0}}'
-      SENTRY_DSN: '$SENTRY_DSN'
-      WORKDIR:
-        sh: pwd
+      SENTRY_DSN: '{{ env "SENTRY_DSN" }}'
+      WORKDIR: '{{.RUN_DIR_RESOLVED}}'
     requires:
       vars:
         - VERSION
@@ -28,6 +32,8 @@ tasks:
     cmds:
       - defer: { task: kube:config:clean }
       - >-
+        cd {{.WORKDIR}} &&
+        nix develop --command
         helmfile
         --state-values-set version={{.VERSION}}
         {{ if .SENTRY_DSN }}--state-values-set sentryDsn="{{ .SENTRY_DSN }}"{{ end }}
