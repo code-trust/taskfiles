@@ -1,12 +1,14 @@
 version: '3'
 
+vars:
+  RUN_DIR_RESOLVED: "{{default .TASKFILE_DIR .RUN_DIR}}"
+
 tasks:
   config:load:*:
     desc: "task kube:config:load:<dev/stage/prod>"
     vars:
       ENVIRONMENT: '{{index .MATCH 0}}'
-      WORKDIR:
-        sh: pwd
+      WORKDIR: '{{.RUN_DIR_RESOLVED}}'
     requires:
       vars:
         - AWS_REGION
@@ -16,21 +18,25 @@ tasks:
       KUBECONFIG: '{{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml'
     cmds:
       - >-
+        cd {{.WORKDIR}} &&
+        nix develop --command
         aws ssm get-parameter
         --name /resourcing/{{.ENVIRONMENT}}/kubeconfig
         --with-decryption
         --query Parameter.Value
         --output text
         > $KUBECONFIG
-      - chmod go-r $KUBECONFIG
+      - >-
+        cd {{.WORKDIR}} &&
+        nix develop --command chmod go-r $KUBECONFIG
 
   config:clean:
     desc: "task kube:config:clean"
-    vars:
-      WORKDIR:
-        sh: pwd
     cmds:
-      - rm -f {{.WORKDIR}}/k3s_kubeconfig_*.yaml
+      - >-
+        cd {{.RUN_DIR_RESOLVED}} &&
+        nix develop --command
+        rm -f k3s_kubeconfig_*.yaml
 
   wait-for:*:
     desc: "task kube:wait-for:<dev/stage/prod> -- <cmds>"
@@ -38,8 +44,7 @@ tasks:
       - config:load:{{.ENVIRONMENT}}
     vars:
       ENVIRONMENT: '{{index .MATCH 0}}'
-      WORKDIR:
-        sh: pwd
+      WORKDIR: '{{.RUN_DIR_RESOLVED}}'
     requires:
       vars:
         - name: ENVIRONMENT
@@ -52,6 +57,8 @@ tasks:
     cmds:
       - defer: { task: config:clean }
       - >-
+        cd {{.WORKDIR}} &&
+        nix develop --command
         kubectl
         rollout status
         {{.CLI_ARGS}}
@@ -60,8 +67,7 @@ tasks:
     desc: "task kube:for-each-node:<dev/stage/prod> -- <cmds>"
     vars:
       ENVIRONMENT: '{{index .MATCH 0}}'
-      WORKDIR:
-        sh: pwd
+      WORKDIR: '{{.RUN_DIR_RESOLVED}}'
     requires:
       vars:
         - name: ENVIRONMENT
@@ -73,15 +79,16 @@ tasks:
         msg: "file {{.WORKDIR}}/k3s_kubeconfig_{{.ENVIRONMENT}}.yaml does not exist."
     cmds:
       - >-
+        cd {{.WORKDIR}} &&
+        nix develop --command
         kubectl
         get nodes
         -o json
-        | jq
-        -r '
+        | nix develop --command jq -r '
         .items
         .[]
         .metadata
         .name
         ' | while read -r node; do
-          kubectl node-shell $node -- {{.CLI_ARGS}}
+          nix develop --command kubectl node-shell "$node" -- {{.CLI_ARGS}}
         done

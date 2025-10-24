@@ -1,5 +1,8 @@
 version: '3'
 
+vars:
+  RUN_DIR_RESOLVED: '{{default .TASKFILE_DIR .RUN_DIR}}'
+
 tasks:
   build:
     desc: Build docker container with tag
@@ -11,5 +14,5 @@ tasks:
       BUILD_DIR: '{{.BUILD_DIR | default "."}}'
     cmds:
       - >-
-        nix develop --command
-        docker build {{.BUILD_OPTS}} -t {{.IMAGE}}:{{.TAG}} {{.BUILD_DIR}}
+        cd {{.RUN_DIR_RESOLVED}} &&
+        nix develop --command docker build {{.BUILD_OPTS}} -t {{.IMAGE}}:{{.TAG}} {{.BUILD_DIR}}
