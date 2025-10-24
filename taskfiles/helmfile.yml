@@ -3,6 +3,7 @@ version: '3'
 includes:
   kube:
     taskfile: ./kube.yml
+    dir: '{{ .TASK_DIR }}'
     internal: true
 
 tasks:

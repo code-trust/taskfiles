@@ -3,10 +3,12 @@ version: '3'
 includes:
   aws:
     taskfile: ./aws.yml
+    dir: '{{ .TASK_DIR }}'
     internal: true
 
   docker:
     taskfile: ./docker.yml
+    dir: '{{ .TASK_DIR }}'
     internal: true
 
 tasks:
