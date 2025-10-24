@@ -17,7 +17,7 @@ tasks:
       - kube:config:load:{{.ENVIRONMENT}}
     vars:
       ENVIRONMENT: '{{index .MATCH 0}}'
-      SENTRY_DSN: '$SENTRY_DSN'
+      SENTRY_DSN: '{{ env "SENTRY_DSN" }}'
       WORKDIR: '{{.RUN_DIR_RESOLVED}}'
     requires:
       vars:
