@@ -5,6 +5,7 @@ vars:
 
 tasks:
   login:
+    run: once
     requires:
       vars:
         - AWS_ACCOUNT_ID
