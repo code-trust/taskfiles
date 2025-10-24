@@ -1,12 +1,18 @@
 version: '3'
 
+vars:
+  RUN_DIR_RESOLVED: '{{default .TASKFILE_DIR .RUN_DIR}}'
+
 includes:
   aws:
     taskfile: ./aws.yml
-    internal: true
+    vars:
+      RUN_DIR: '{{.RUN_DIR}}'
 
   docker:
     taskfile: ./docker.yml
+    vars:
+      RUN_DIR: '{{.RUN_DIR}}'
     internal: true
 
 tasks:
@@ -53,5 +59,6 @@ tasks:
             ref: .TAG
     cmds:
       - >-
+        cd {{.RUN_DIR_RESOLVED}} &&
         nix develop --command
         docker push {{.AWS_ACCOUNT_ID}}.dkr.ecr.{{.AWS_REGION}}.amazonaws.com/{{.IMAGE}}:{{.TAG}}
