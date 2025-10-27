@@ -1,8 +1,14 @@
 version: '3'
 
+vars:
+  RUN_DIR_RESOLVED: "{{default .TASKFILE_DIR .RUN_DIR}}"
+
 tasks:
   install:
     internal: true
     run: once
     cmds:
-      - rustup toolchain install stable
+      - >-
+        cd {{.RUN_DIR_RESOLVED}} &&
+        nix develop --command
+        rustup toolchain install stable
