@@ -12,6 +12,7 @@ tasks:
     requires:
       vars:
         - AWS_REGION
+        - NAMESPACE
         - name: ENVIRONMENT
           enum: [dev, stage, prod]
     env:
@@ -21,7 +22,7 @@ tasks:
         cd {{.WORKDIR}} &&
         nix develop --command
         aws ssm get-parameter
-        --name /resourcing/{{.ENVIRONMENT}}/kubeconfig
+        --name /{{.NAMESPACE}}/{{.ENVIRONMENT}}/kubeconfig
         --with-decryption
         --query Parameter.Value
         --output text
